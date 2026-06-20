@@ -1,0 +1,364 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>bundleid</key>
+	<string>com.tzmod.alfred.open-obsidian-vault</string>
+	<key>category</key>
+	<string>Productivity</string>
+	<key>connections</key>
+	<dict>
+		<key>54B8D923-3C08-4CD2-8F05-0AF628F5C029</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>0796CFDE-8B84-4EAD-A82D-6558AF6C4D42</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+	</dict>
+	<key>createdby</key>
+	<string>tzmod</string>
+	<key>description</key>
+	<string>Open Obsidian vaults by name with fuzzy matching.</string>
+	<key>disabled</key>
+	<false/>
+	<key>name</key>
+	<string>Open Obsidian Vault</string>
+	<key>objects</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<true/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<true/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>68</integer>
+				<key>keyword</key>
+				<string>v</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>Searching Obsidian vaults...</string>
+				<key>script</key>
+				<string>function run(argv) {
+  ObjC.import("Foundation");
+
+  const query = normalize(argv.join(" "));
+  const home = ObjC.unwrap($.NSHomeDirectory());
+  const configPath = `${home}/Library/Application Support/obsidian/obsidian.json`;
+
+  function normalize(value) {
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  }
+
+  function compact(value) {
+    return normalize(value).replace(/[^a-z0-9]/g, "");
+  }
+
+  function basename(value) {
+    return String(value || "").replace(/\/+$/, "").split("/").pop();
+  }
+
+  function exists(filePath) {
+    return $.NSFileManager.defaultManager.fileExistsAtPath($(filePath));
+  }
+
+  function readText(filePath) {
+    const text = $.NSString.stringWithContentsOfFileEncodingError(
+      $(filePath),
+      $.NSUTF8StringEncoding,
+      null,
+    );
+    return text ? ObjC.unwrap(text) : null;
+  }
+
+  function fuzzyScore(rawQuery, candidates) {
+    if (!rawQuery) return 0;
+
+    const q = compact(rawQuery);
+    if (!q) return 0;
+
+    let best = -Infinity;
+    candidates.forEach((candidate) =&gt; {
+      const c = compact(candidate);
+      if (!c) return;
+
+      if (c === q) best = Math.max(best, 1000);
+      if (c.indexOf(q) === 0) best = Math.max(best, 850 - (c.length - q.length));
+      if (c.indexOf(q) &gt;= 0) best = Math.max(best, 700 - c.indexOf(q));
+
+      let qi = 0;
+      let score = 0;
+      let lastIndex = -2;
+      let firstIndex = -1;
+
+      for (let ci = 0; ci &lt; c.length &amp;&amp; qi &lt; q.length; ci += 1) {
+        if (c[ci] !== q[qi]) continue;
+
+        if (firstIndex === -1) firstIndex = ci;
+        score += 18;
+        if (ci === lastIndex + 1) score += 10;
+        score -= Math.max(0, ci - lastIndex - 1);
+        lastIndex = ci;
+        qi += 1;
+      }
+
+      if (qi === q.length) {
+        score += 240;
+        score -= firstIndex * 3;
+        score -= Math.max(0, c.length - q.length);
+        best = Math.max(best, score);
+      }
+    });
+
+    return best;
+  }
+
+  function minimumScore(rawQuery) {
+    const length = compact(rawQuery).length;
+    return length &lt;= 1 ? 240 : 300;
+  }
+
+  function errorResult(title, subtitle) {
+    return JSON.stringify({
+      items: [
+        {
+          title,
+          subtitle,
+          valid: false,
+          icon: {
+            path: "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/AlertStopIcon.icns",
+          },
+        },
+      ],
+    });
+  }
+
+  if (!exists(configPath)) {
+    return errorResult(
+      "Obsidian vault registry not found",
+      "Open Obsidian once so it can create a local vault registry.",
+    );
+  }
+
+  const rawConfig = readText(configPath);
+  if (!rawConfig) {
+    return errorResult("Could not read Obsidian vault registry", "Check Obsidian's local app data.");
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(rawConfig);
+  } catch (error) {
+    return errorResult("Could not parse Obsidian vault registry", error.message);
+  }
+
+  const vaults = Object.keys(parsed.vaults || {})
+    .map((id) =&gt; {
+      const vault = parsed.vaults[id] || {};
+      const vaultPath = String(vault.path || "");
+      const name = basename(vaultPath);
+      const candidates = [name].concat(name.split(/\s+/));
+
+      return {
+        id,
+        path: vaultPath,
+        name,
+        exists: vaultPath ? exists(vaultPath) : false,
+        isOpen: Boolean(vault.open),
+        ts: Number(vault.ts || 0),
+        candidates,
+      };
+    })
+    .filter((vault) =&gt; vault.path &amp;&amp; vault.name);
+
+  const scored = vaults
+    .map((vault) =&gt; ({
+      vault,
+      score: query ? fuzzyScore(query, vault.candidates) : 0,
+    }))
+    .filter((entry) =&gt; !query || entry.score &gt;= minimumScore(query))
+    .sort((a, b) =&gt; {
+      if (b.score !== a.score) return b.score - a.score;
+      if (Number(b.vault.isOpen) !== Number(a.vault.isOpen)) {
+        return Number(b.vault.isOpen) - Number(a.vault.isOpen);
+      }
+      if (b.vault.ts !== a.vault.ts) return b.vault.ts - a.vault.ts;
+      return a.vault.name.localeCompare(b.vault.name);
+    });
+
+  const items = scored.map((entry) =&gt; {
+    const vault = entry.vault;
+    const title = vault.name;
+    const subtitle = vault.exists ? "Open this vault in Obsidian" : "Vault path is not available";
+
+    return {
+      title,
+      subtitle,
+      arg: vault.name,
+      autocomplete: vault.name,
+      match: vault.name,
+      valid: vault.exists,
+    };
+  });
+
+  return JSON.stringify({
+    skipknowledge: true,
+    items: items.length
+      ? items
+      : [
+          {
+            title: "No matching Obsidian vaults",
+            subtitle: "Try a different vault name",
+            valid: false,
+          },
+        ],
+  });
+}
+</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>subtext</key>
+				<string>Type a vault name</string>
+				<key>title</key>
+				<string>Open Obsidian Vault</string>
+				<key>type</key>
+				<integer>7</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>54B8D923-3C08-4CD2-8F05-0AF628F5C029</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>68</integer>
+				<key>script</key>
+				<string>function run(argv) {
+  ObjC.import("Foundation");
+
+  const app = Application.currentApplication();
+  app.includeStandardAdditions = true;
+
+  const vaultName = argv.join(" ").trim();
+  if (!vaultName) return "";
+
+  const vault = findRegisteredVault(vaultName);
+  if (!vault) {
+    return "";
+  }
+
+  const url = `obsidian://open?vault=${encodeURIComponent(vault.name)}`;
+  app.openLocation(url);
+
+  return "";
+}
+
+function findRegisteredVault(vaultName) {
+  const home = ObjC.unwrap($.NSHomeDirectory());
+  const configPath = `${home}/Library/Application Support/obsidian/obsidian.json`;
+  const fileManager = $.NSFileManager.defaultManager;
+
+  if (!fileManager.fileExistsAtPath($(configPath))) return null;
+
+  const rawConfig = $.NSString.stringWithContentsOfFileEncodingError(
+    $(configPath),
+    $.NSUTF8StringEncoding,
+    null,
+  );
+  if (!rawConfig) return null;
+
+  let parsed;
+  try {
+    parsed = JSON.parse(ObjC.unwrap(rawConfig));
+  } catch (_error) {
+    return null;
+  }
+
+  const vaults = parsed.vaults || {};
+  const names = Object.keys(vaults).map((id) =&gt; basename(String(vaults[id].path || "")));
+  return names.includes(vaultName) ? { name: vaultName } : null;
+}
+
+function basename(value) {
+  return String(value || "").replace(/\/+$/, "").split("/").pop();
+}
+</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>7</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>0796CFDE-8B84-4EAD-A82D-6558AF6C4D42</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+	</array>
+	<key>readme</key>
+	<string>Type v followed by a vault name to fuzzy search Obsidian vaults. Press Return to open the selected vault.</string>
+	<key>uidata</key>
+	<dict>
+		<key>0796CFDE-8B84-4EAD-A82D-6558AF6C4D42</key>
+		<dict>
+			<key>xpos</key>
+			<integer>420</integer>
+			<key>ypos</key>
+			<integer>120</integer>
+		</dict>
+		<key>54B8D923-3C08-4CD2-8F05-0AF628F5C029</key>
+		<dict>
+			<key>xpos</key>
+			<integer>120</integer>
+			<key>ypos</key>
+			<integer>120</integer>
+		</dict>
+	</dict>
+	<key>userconfigurationconfig</key>
+	<array/>
+	<key>variablesdontexport</key>
+	<array/>
+	<key>version</key>
+	<string>1.0.0</string>
+	<key>webaddress</key>
+	<string></string>
+</dict>
+</plist>

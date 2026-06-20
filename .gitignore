@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Build scratch
+info.json
+icon.png
+*.log
+
+# Node/package manager scratch
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local Codex hooks and runtime state.
+.codex/
+
+# Editor-local settings.
+.vscode/
+
+# Local Alfred preference exports or scratch copies
+*.alfredpreferences/
+user.workflow.*/
+
