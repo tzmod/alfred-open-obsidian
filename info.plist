@@ -334,7 +334,9 @@ function basename(value) {
 		</dict>
 	</array>
 	<key>readme</key>
-	<string>Type v followed by a vault name to fuzzy search Obsidian vaults. Press Return to open the selected vault.</string>
+	<string>Type v followed by a vault name to fuzzy search Obsidian vaults. Press Return to open the selected vault.
+
+Icon: 2023 Obsidian logo by Dynalist Inc. / Obsidian, sourced from Wikimedia Commons and licensed under CC BY 4.0.</string>
 	<key>uidata</key>
 	<dict>
 		<key>0796CFDE-8B84-4EAD-A82D-6558AF6C4D42</key>

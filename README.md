@@ -86,4 +86,6 @@ unzip -t "Open Obsidian Vault.alfredworkflow"
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Code is MIT. See [LICENSE](LICENSE).
+
+The workflow icon uses the 2023 Obsidian logo by Dynalist Inc. / Obsidian, sourced from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:2023_Obsidian_logo.svg) and licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The packaged PNG is generated from that SVG.

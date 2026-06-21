@@ -77,7 +77,8 @@ const plist = {
       version: 2,
     },
   ],
-  readme: "Type v followed by a vault name to fuzzy search Obsidian vaults. Press Return to open the selected vault.",
+  readme:
+    "Type v followed by a vault name to fuzzy search Obsidian vaults. Press Return to open the selected vault.\n\nIcon: 2023 Obsidian logo by Dynalist Inc. / Obsidian, sourced from Wikimedia Commons and licensed under CC BY 4.0.",
   uidata: {
     [inputUid]: {
       xpos: 120,
