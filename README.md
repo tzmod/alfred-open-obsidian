@@ -31,14 +31,14 @@ Type `v ` in Alfred, then search for a vault:
 
 ```text
 v fin
-v jobs
+v job
 ```
 
 Results show the real vault folder name:
 
 ```text
 Finance
-Jobs
+Work-Jobs
 ```
 
 Press Return to open the selected vault in Obsidian.
@@ -51,7 +51,7 @@ The workflow reads:
 ~/Library/Application Support/obsidian/obsidian.json
 ```
 
-It derives each vault name from the vault folder basename and searches against that full folder name.
+It derives each vault name from the vault folder basename and searches against that full folder name. Matching ignores case, accents, and punctuation, so `job` matches `Work-Jobs`. The script handles filtering and ranking, with Alfred's additional result filtering disabled.
 
 No environment variables are required.
 

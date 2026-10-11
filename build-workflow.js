@@ -39,7 +39,8 @@ const plist = {
   objects: [
     {
       config: {
-        alfredfiltersresults: true,
+        // The script scores fuzzy matches; Alfred's extra filter can hide them.
+        alfredfiltersresults: false,
         alfredfiltersresultsmatchmode: 0,
         argumenttreatemptyqueryasnil: true,
         argumenttrimmode: 0,
